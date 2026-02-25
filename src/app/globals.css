@@ -1,0 +1,24 @@
+@import "tailwindcss";
+@import "katex/dist/katex.min.css";
+
+:root {
+  --primary: #6366f1;
+  --primary-hover: #4f46e5;
+  --background: #f8fafc;
+  --card-bg: #ffffff;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --border: #e2e8f0;
+  --success: #22c55e;
+  --error: #ef4444;
+}
+
+body {
+  background: var(--background);
+  color: var(--text-primary);
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.katex {
+  font-size: 1.2em;
+}
