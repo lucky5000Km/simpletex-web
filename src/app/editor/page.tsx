@@ -3,135 +3,143 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import "katex/dist/katex.min.css";
 
-// 符号分类
+// 符号分类 - 优化版
 const symbolCategories = [
   {
-    name: "基础运算",
+    name: "基础",
+    nameEn: "Basic",
     symbols: [
-      { latex: "+", name: "加号" },
-      { latex: "-", name: "减号" },
-      { latex: "\\times", name: "乘号" },
-      { latex: "\\div", name: "除号" },
-      { latex: "=", name: "等于" },
-      { latex: "\\neq", name: "不等于" },
-      { latex: "<", name: "小于" },
-      { latex: ">", name: "大于" },
-      { latex: "\\leq", name: "小于等于" },
-      { latex: "\\geq", name: "大于等于" },
-      { latex: "\\pm", name: "正负" },
-      { latex: "\\mp", name: "负正" },
+      { latex: "+", name: "+" },
+      { latex: "-", name: "-" },
+      { latex: "\\times", name: "×" },
+      { latex: "\\div", name: "÷" },
+      { latex: "=", name: "=" },
+      { latex: "\\neq", name: "≠" },
+      { latex: "<", name: "<" },
+      { latex: ">", name: ">" },
+      { latex: "\\leq", name: "≤" },
+      { latex: "\\geq", name: "≥" },
+      { latex: "\\pm", name: "±" },
+      { latex: "\\mp", name: "∓" },
     ]
   },
   {
-    name: "分数与根号",
+    name: "运算",
+    nameEn: "Operations",
     symbols: [
-      { latex: "\\frac{}{}", name: "分数" },
-      { latex: "\\sqrt{}", name: "根号" },
-      { latex: "\\sqrt[]{}", name: "n次根" },
-      { latex: "\\frac{a}{b}", name: "分数示例" },
-      { latex: "x^2", name: "平方" },
-      { latex: "x^n", name: "n次方" },
-      { latex: "x_i", name: "下标" },
-      { latex: "x^{n}", name: "上标" },
+      { latex: "\\frac{}{}", name: "a/b" },
+      { latex: "\\sqrt{}", name: "√" },
+      { latex: "x^n", name: "xⁿ" },
+      { latex: "x_i", name: "xᵢ" },
+      { latex: "x^{n}", name: "xⁿ" },
+      { latex: "\\int", name: "∫" },
+      { latex: "\\int_{a}^{b}", name: "∫ᵇₐ" },
+      { latex: "\\sum", name: "Σ" },
+      { latex: "\\sum_{i=1}^{n}", name: "Σⁿᵢ₌₁" },
+      { latex: "\\prod", name: "Π" },
+      { latex: "\\lim", name: "lim" },
+      { latex: "\\infty", name: "∞" },
     ]
   },
   {
-    name: "希腊字母",
+    name: "字母",
+    nameEn: "Letters",
     symbols: [
       { latex: "\\alpha", name: "α" },
       { latex: "\\beta", name: "β" },
       { latex: "\\gamma", name: "γ" },
       { latex: "\\delta", name: "δ" },
-      { latex: "\\epsilon", name: "ε" },
       { latex: "\\theta", name: "θ" },
       { latex: "\\lambda", name: "λ" },
-      { latex: "\\mu", name: "μ" },
       { latex: "\\pi", name: "π" },
       { latex: "\\sigma", name: "σ" },
       { latex: "\\omega", name: "ω" },
       { latex: "\\Delta", name: "Δ" },
       { latex: "\\Sigma", name: "Σ" },
-      { latex: "\\Pi", name: "Π" },
       { latex: "\\Omega", name: "Ω" },
     ]
   },
   {
-    name: "集合运算",
+    name: "符号",
+    nameEn: "Symbols",
     symbols: [
-      { latex: "\\in", name: "属于" },
-      { latex: "\\notin", name: "不属于" },
-      { latex: "\\subset", name: "真子集" },
-      { latex: "\\subseteq", name: "子集" },
-      { latex: "\\cup", name: "并集" },
-      { latex: "\\cap", name: "交集" },
-      { latex: "\\emptyset", name: "空集" },
-      { latex: "\\mathbb{R}", name: "实数集" },
-      { latex: "\\mathbb{Z}", name: "整数集" },
-      { latex: "\\mathbb{N}", name: "自然数" },
+      { latex: "\\in", name: "∈" },
+      { latex: "\\notin", name: "∉" },
+      { latex: "\\subset", name: "⊂" },
+      { latex: "\\subseteq", name: "⊆" },
+      { latex: "\\cup", name: "∪" },
+      { latex: "\\cap", name: "∩" },
+      { latex: "\\emptyset", name: "∅" },
+      { latex: "\\forall", name: "∀" },
+      { latex: "\\exists", name: "∃" },
+      { latex: "\\partial", name: "∂" },
+      { latex: "\\nabla", name: "∇" },
+      { latex: "\\therefore", name: "∴" },
     ]
   },
   {
-    name: "微积分",
+    name: "三角",
+    nameEn: "Trig",
     symbols: [
-      { latex: "\\int", name: "积分" },
-      { latex: "\\int_{a}^{b}", name: "定积分" },
-      { latex: "\\infty", name: "无穷" },
-      { latex: "\\partial", name: "偏导" },
-      { latex: "\\nabla", name: "梯度" },
-      { latex: "\\lim", name: "极限" },
-      { latex: "\\lim_{x \\to \\infty}", name: "极限示例" },
-      { latex: "\\sum", name: "求和" },
-      { latex: "\\sum_{i=1}^{n}", name: "求和示例" },
-      { latex: "\\prod", name: "连乘" },
+      { latex: "\\sin", name: "sin" },
+      { latex: "\\cos", name: "cos" },
+      { latex: "\\tan", name: "tan" },
+      { latex: "\\cot", name: "cot" },
+      { latex: "\\sec", name: "sec" },
+      { latex: "\\csc", name: "csc" },
+      { latex: "\\arcsin", name: "arcsin" },
+      { latex: "\\arccos", name: "arccos" },
+      { latex: "\\arctan", name: "arctan" },
     ]
   },
   {
-    name: "三角函数",
+    name: "样式",
+    nameEn: "Styles",
     symbols: [
-      { latex: "\\sin", name: "正弦" },
-      { latex: "\\cos", name: "余弦" },
-      { latex: "\\tan", name: "正切" },
-      { latex: "\\cot", name: "余切" },
-      { latex: "\\sec", name: "正割" },
-      { latex: "\\csc", name: "余割" },
-      { latex: "\\arcsin", name: "反正弦" },
-      { latex: "\\arccos", name: "反余弦" },
-      { latex: "\\arctan", name: "反正切" },
-    ]
-  },
-  {
-    name: "括号与修饰",
-    symbols: [
-      { latex: "\\left(", name: "左圆括号" },
-      { latex: "\\right)", name: "右圆括号" },
-      { latex: "\\left[", name: "左方括号" },
-      { latex: "\\right]", name: "右方括号" },
-      { latex: "\\left\\{", name: "左花括号" },
-      { latex: "\\right\\}", name: "右花括号" },
-      { latex: "\\left|", name: "左竖线" },
-      { latex: "\\right|", name: "右竖线" },
+      { latex: "\\mathbf{}", name: "粗体" },
+      { latex: "\\mathrm{}", name: "正体" },
+      { latex: "\\mathcal{}", name: "花体" },
+      { latex: "\\mathbb{}", name: "黑板" },
       { latex: "\\overrightarrow{}", name: "向量" },
-      { latex: "\\bar{}", name: "平均数" },
-      { latex: "\\hat{}", name: "帽子" },
+      { latex: "\\bar{}", name: "横线" },
+      { latex: "\\hat{}", name: "尖帽" },
       { latex: "\\dot{}", name: "点" },
       { latex: "\\ddot{}", name: "双点" },
+      { latex: "\\tilde{}", name: "波浪" },
     ]
   },
   {
-    name: "常用公式",
+    name: "容器",
+    nameEn: "Containers",
     symbols: [
-      { latex: "x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}", name: "求根公式" },
-      { latex: "e^{i\\pi} + 1 = 0", name: "欧拉公式" },
-      { latex: "\\sin^2\\theta + \\cos^2\\theta = 1", name: "勾股定理" },
-      { latex: "f(x) = \\lim_{h \\to 0} \\frac{f(x+h)-f(x)}{h}", name: "导数定义" },
-      { latex: "\\int f(x)dx = F(x) + C", name: "不定积分" },
+      { latex: "\\left( \\right)", name: "()" },
+      { latex: "\\left[ \\right]", name: "[]" },
+      { latex: "\\left\\{ \\right\\}", name: "{}" },
+      { latex: "\\left| \\right|", name: "||" },
+      { latex: "\\left\\| \\right\\|", name: "‖‖" },
+      { latex: "\\begin{cases} \\end{cases}", name: "分段" },
+      { latex: "\\begin{array}{c} \\end{array}", name: "数组" },
+      { latex: "\\begin{pmatrix} \\end{pmatrix}", name: "矩阵" },
     ]
-  }
+  },
+];
+
+// 公式模板
+const formulaTemplates = [
+  { name: "一元二次方程", latex: "x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}" },
+  { name: "勾股定理", latex: "a^2 + b^2 = c^2" },
+  { name: "欧拉公式", latex: "e^{i\\pi} + 1 = 0" },
+  { name: "导数定义", latex: "f'(x) = \\lim_{h \\to 0} \\frac{f(x+h)-f(x)}{h}" },
+  { name: "定积分", latex: "\\int_a^b f(x) dx = F(b) - F(a)" },
+  { name: "均值不等式", latex: "\\frac{a+b}{2} \\geq \\sqrt{ab}" },
+  { name: "二项式定理", latex: "(a+b)^n = \\sum_{k=0}^{n} C_n^k a^{n-k} b^k" },
+  { name: "泰勒展开", latex: "e^x = \\sum_{n=0}^{\\infty} \\frac{x^n}{n!}" },
 ];
 
 export default function Editor() {
   const [latex, setLatex] = useState<string>("x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}");
   const [copied, setCopied] = useState(false);
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -174,6 +182,12 @@ export default function Editor() {
       textarea.setSelectionRange(newPos, newPos);
     }, 0);
   }, [latex]);
+
+  // 插入模板
+  const insertTemplate = useCallback((templateLatex: string) => {
+    setLatex(templateLatex);
+    textareaRef.current?.focus();
+  }, []);
 
   // 复制
   const handleCopy = useCallback(async () => {
@@ -220,28 +234,51 @@ export default function Editor() {
 
       <main className="max-w-7xl mx-auto px-6 py-6">
         <div className="grid lg:grid-cols-4 gap-6">
-          {/* 左侧：符号面板 */}
+          {/* 左侧：符号面板 - 鼠标悬停展开 */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden sticky top-24 max-h-[calc(100vh-120px)] overflow-y-auto">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
               <div className="px-4 py-3 border-b border-slate-200 bg-slate-50">
                 <h2 className="font-medium text-slate-700">符号面板</h2>
               </div>
-              <div className="p-3 space-y-4">
+              <div className="p-2">
                 {symbolCategories.map((category, idx) => (
-                  <div key={idx}>
-                    <h3 className="text-xs font-medium text-slate-500 mb-2">{category.name}</h3>
-                    <div className="grid grid-cols-4 gap-1">
-                      {category.symbols.map((symbol, sidx) => (
-                        <button
-                          key={sidx}
-                          type="button"
-                          onClick={() => insertSymbol(symbol.latex)}
-                          className="p-2 text-xs bg-slate-50 hover:bg-indigo-50 hover:text-indigo-600 rounded transition-colors flex items-center justify-center"
-                          title={symbol.name}
-                        >
-                          {symbol.name}
-                        </button>
-                      ))}
+                  <div key={idx} className="relative mb-1">
+                    {/* 分类按钮 */}
+                    <button
+                      type="button"
+                      onClick={() => setExpandedCategory(expandedCategory === category.name ? null : category.name)}
+                      className="w-full px-3 py-2 text-sm bg-slate-100 hover:bg-indigo-50 rounded-lg flex items-center justify-between transition-colors"
+                    >
+                      <span className="font-medium text-slate-700">{category.name}</span>
+                      <svg 
+                        className={`w-4 h-4 text-slate-400 transition-transform ${expandedCategory === category.name ? 'rotate-180' : ''}`} 
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    
+                    {/* 悬停展开的符号网格 */}
+                    <div 
+                      className={`absolute left-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg p-3 z-20 w-full transition-all duration-200 ${
+                        expandedCategory === category.name 
+                          ? 'opacity-100 visible translate-y-0' 
+                          : 'opacity-0 invisible -translate-y-2'
+                      }`}
+                    >
+                      <div className="grid grid-cols-4 gap-1">
+                        {category.symbols.map((symbol, sidx) => (
+                          <button
+                            key={sidx}
+                            type="button"
+                            onClick={() => insertSymbol(symbol.latex)}
+                            className="p-2 text-sm bg-slate-50 hover:bg-indigo-50 hover:text-indigo-600 rounded transition-colors flex items-center justify-center"
+                            title={symbol.latex}
+                          >
+                            {symbol.name}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -249,8 +286,9 @@ export default function Editor() {
             </div>
           </div>
 
-          {/* 中间：编辑区 */}
-          <div className="lg:col-span-2 space-y-4">
+          {/* 中间+右侧：编辑区和预览（预览在下面） */}
+          <div className="lg:col-span-3 space-y-4">
+            {/* 编辑区 */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
               <div className="px-4 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
                 <h2 className="font-medium text-slate-700">LaTeX 源码</h2>
@@ -275,37 +313,55 @@ export default function Editor() {
                 ref={textareaRef}
                 value={latex}
                 onChange={(e) => setLatex(e.target.value)}
-                className="w-full h-48 p-4 text-sm font-mono resize-y focus:outline-none"
+                className="w-full h-32 p-4 text-sm font-mono resize-y focus:outline-none"
                 placeholder="在此输入 LaTeX 公式，或点击左侧符号插入..."
                 spellCheck={false}
               />
+            </div>
+
+            {/* 预览区 - 放到源码下面 */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="px-4 py-3 border-b border-slate-200 bg-slate-50">
+                <h2 className="font-medium text-slate-700">预览效果</h2>
+              </div>
+              <div className="p-8 min-h-[150px] flex items-center justify-center bg-slate-50">
+                {latex ? (
+                  <div ref={previewRef} className="text-2xl text-center" />
+                ) : (
+                  <p className="text-slate-400 text-sm">输入公式后显示预览</p>
+                )}
+              </div>
+            </div>
+
+            {/* 公式模板快捷入口 */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="px-4 py-3 border-b border-slate-200 bg-slate-50">
+                <h2 className="font-medium text-slate-700">常用公式模板</h2>
+              </div>
+              <div className="p-4">
+                <div className="flex flex-wrap gap-2">
+                  {formulaTemplates.map((template, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => insertTemplate(template.latex)}
+                      className="px-3 py-2 text-sm bg-slate-50 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors border border-slate-200 hover:border-indigo-300"
+                    >
+                      {template.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* 使用说明 */}
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
               <h3 className="font-medium text-blue-800 mb-2">使用说明</h3>
               <ul className="text-sm text-blue-700 space-y-1">
-                <li>• 点击左侧符号面板可插入对应 LaTeX 代码</li>
-                <li>• 支持直接编辑 LaTeX 源码</li>
-                <li>• 右侧实时预览渲染效果</li>
-                <li>• 常用公式模板可快速插入</li>
+                <li>• 点击或悬停左侧符号面板可插入对应 LaTeX 代码</li>
+                <li>• 支持直接编辑 LaTeX 源码，预览实时更新</li>
+                <li>• 点击常用公式模板可快速插入完整公式</li>
               </ul>
-            </div>
-          </div>
-
-          {/* 右侧：预览区 */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden sticky top-24">
-              <div className="px-4 py-3 border-b border-slate-200 bg-slate-50">
-                <h2 className="font-medium text-slate-700">预览</h2>
-              </div>
-              <div className="p-6 min-h-[200px] flex items-center justify-center">
-                {latex ? (
-                  <div ref={previewRef} className="text-center" />
-                ) : (
-                  <p className="text-slate-400 text-sm">输入公式后显示预览</p>
-                )}
-              </div>
             </div>
           </div>
         </div>
