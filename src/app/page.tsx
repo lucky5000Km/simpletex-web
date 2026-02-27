@@ -208,9 +208,26 @@ export default function Home() {
   }, [latex, showPreview]);
 
   // Copy to clipboard
-  const handleCopy = useCallback(() => {
+  const handleCopy = useCallback(async () => {
     if (latex) {
-      navigator.clipboard.writeText(latex);
+      try {
+        // 尝试使用 Clipboard API
+        await navigator.clipboard.writeText(latex);
+      } catch (err) {
+        // 回退方案：使用临时的 textarea 元素
+        const textarea = document.createElement("textarea");
+        textarea.value = latex;
+        textarea.style.position = "fixed";
+        textarea.style.left = "-9999px";
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+          document.execCommand("copy");
+        } catch (e) {
+          console.error("Copy failed:", e);
+        }
+        document.body.removeChild(textarea);
+      }
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -458,10 +475,10 @@ export default function Home() {
                       </div>
                     </div>
 
-                    {/* LaTeX Source (Bottom) */}
+                    {/* LaTeX Source (Bottom) - 可编辑 */}
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <label className="text-sm font-medium text-slate-600">LaTeX 源码</label>
+                        <label className="text-sm font-medium text-slate-600">LaTeX 源码 (可编辑)</label>
                         <button
                           type="button"
                           onClick={handleCopy}
@@ -484,9 +501,16 @@ export default function Home() {
                           )}
                         </button>
                       </div>
-                      <pre className="bg-slate-900 text-slate-100 p-4 rounded-lg text-sm font-mono overflow-x-auto whitespace-pre-wrap break-all max-h-60 overflow-y-auto">
-                        {latex}
-                      </pre>
+                      <textarea
+                        value={latex}
+                        onChange={(e) => setLatex(e.target.value)}
+                        className="w-full bg-slate-900 text-slate-100 p-4 rounded-lg text-sm font-mono h-32 resize-y focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="在此编辑 LaTeX 源码..."
+                        spellCheck={false}
+                      />
+                      <p className="text-xs text-slate-400 mt-1">
+                        编辑后预览区将实时更新
+                      </p>
                     </div>
                   </div>
                 ) : (
