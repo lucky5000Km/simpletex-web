@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     });
 
     // 获取用户详情
-    const userIds = userStats.map((s) => s.userId);
+    const userIds = userStats.map((s: { userId: string }) => s.userId);
     const users = await prisma.user.findMany({
       where: { id: { in: userIds } },
       select: { id: true, username: true },
