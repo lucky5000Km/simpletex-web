@@ -15,6 +15,7 @@ const API_URL = "/api/ocr";
 
 export default function Home() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userInfo, setUserInfo] = useState<{ id: string; username: string; role: string; status: string } | null>(null);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
@@ -34,9 +35,15 @@ export default function Home() {
 
   // Check login status
   useEffect(() => {
-    const loggedIn = localStorage.getItem("simpletex_logged_in");
-    if (loggedIn === "true") {
-      setIsLoggedIn(true);
+    const savedUser = localStorage.getItem("simpletex_user");
+    if (savedUser) {
+      try {
+        const user = JSON.parse(savedUser);
+        setUserInfo(user);
+        setIsLoggedIn(true);
+      } catch (e) {
+        console.error("Failed to parse user info", e);
+      }
     }
   }, []);
 
@@ -44,7 +51,7 @@ export default function Home() {
   const handleLogin = useCallback(async () => {
     setLoginError("");
     try {
-      const response = await fetch("/api/login", {
+      const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
@@ -52,7 +59,8 @@ export default function Home() {
       const data = await response.json();
       
       if (data.success) {
-        localStorage.setItem("simpletex_logged_in", "true");
+        localStorage.setItem("simpletex_user", JSON.stringify(data.data));
+        setUserInfo(data.data);
         setIsLoggedIn(true);
       } else {
         setLoginError(data.message || "登录失败");
@@ -64,7 +72,8 @@ export default function Home() {
 
   // Handle logout
   const handleLogout = useCallback(() => {
-    localStorage.removeItem("simpletex_logged_in");
+    localStorage.removeItem("simpletex_user");
+    setUserInfo(null);
     setIsLoggedIn(false);
     setUsername("");
     setPassword("");
@@ -147,9 +156,14 @@ export default function Home() {
     return () => document.removeEventListener("paste", handlePaste);
   }, [handleFile]);
 
-  // Submit for recognition
+  // Submit for recognition - 添加用户认证信息
   const handleSubmit = useCallback(async () => {
     if (!image) return;
+    
+    if (!userInfo || userInfo.status !== "approved") {
+      setError("账号未通过审批，无法使用此功能");
+      return;
+    }
     
     setLoading(true);
     setError("");
@@ -158,8 +172,14 @@ export default function Home() {
       const formData = new FormData();
       formData.append("file", image);
       
+      // 将用户信息编码到请求头
+      const authHeader = Buffer.from(JSON.stringify(userInfo)).toString("base64");
+      
       const response = await fetch(API_URL, {
         method: "POST",
+        headers: {
+          "Authorization": authHeader,
+        },
         body: formData,
       });
       
@@ -186,7 +206,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [image, imagePreview, history, saveHistory]);
+  }, [image, imagePreview, history, saveHistory, userInfo]);
 
   // Render preview using KaTeX
   useEffect(() => {
@@ -211,10 +231,8 @@ export default function Home() {
   const handleCopy = useCallback(async () => {
     if (latex) {
       try {
-        // 尝试使用 Clipboard API
         await navigator.clipboard.writeText(latex);
       } catch (err) {
-        // 回退方案：使用临时的 textarea 元素
         const textarea = document.createElement("textarea");
         textarea.value = latex;
         textarea.style.position = "fixed";
@@ -266,7 +284,7 @@ export default function Home() {
               </svg>
             </div>
             <h1 className="text-2xl font-bold text-slate-800">SimpleTex Web</h1>
-            <p className="text-slate-500 mt-2">请先登录</p>
+            <p className="text-slate-500 mt-2">公式识别服务</p>
           </div>
           
           <div className="space-y-4">
@@ -302,6 +320,13 @@ export default function Home() {
             >
               登录
             </button>
+            
+            <a
+              href="/register"
+              className="w-full py-3 text-center bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition-colors block"
+            >
+              注册账号
+            </a>
           </div>
           
           <p className="text-center text-slate-400 text-sm mt-6">
@@ -311,6 +336,9 @@ export default function Home() {
       </div>
     );
   }
+
+  // 检查用户是否通过审批
+  const isApproved = userInfo?.status === "approved";
 
   // Main app
   return (
@@ -327,6 +355,10 @@ export default function Home() {
             <h1 className="text-xl font-semibold text-slate-800">SimpleTex Web</h1>
           </div>
           <div className="flex items-center gap-4">
+            <span className="text-sm text-slate-500">
+              欢迎, {userInfo?.username}
+              {userInfo?.role === "admin" && <span className="ml-2 px-2 py-0.5 bg-indigo-100 text-indigo-600 rounded text-xs">管理员</span>}
+            </span>
             <a
               href="/editor"
               className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors flex items-center gap-1"
@@ -336,20 +368,14 @@ export default function Home() {
               </svg>
               公式编辑器
             </a>
-            <button
-              onClick={() => setShowHistory(!showHistory)}
-              className="relative px-4 py-2 text-sm font-medium text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors"
-            >
-              <svg className="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              历史记录
-              {history.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-indigo-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
-                  {history.length}
-                </span>
-              )}
-            </button>
+            {userInfo?.role === "admin" && (
+              <a
+                href="/admin"
+                className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                用户管理
+              </a>
+            )}
             <button
               onClick={handleLogout}
               className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-red-600 hover:bg-slate-100 rounded-lg transition-colors"
@@ -362,6 +388,18 @@ export default function Home() {
 
       {/* Main Content */}
       <main className="max-w-6xl mx-auto px-6 py-8">
+        {/* 未审批提示 */}
+        {!isApproved && (
+          <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-lg mb-6">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span>您的账号正在等待审批，审批通过后方可使用公式识别功能</span>
+            </div>
+          </div>
+        )}
+
         <div className="grid md:grid-cols-2 gap-8">
           {/* Left: Upload Area */}
           <div className="space-y-6">
@@ -370,11 +408,11 @@ export default function Home() {
                 isDragOver
                   ? "border-indigo-500 bg-indigo-50"
                   : "border-slate-300 hover:border-indigo-400 hover:bg-slate-50"
-              }`}
+              } ${!isApproved ? "opacity-50 pointer-events-none" : ""}`}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => isApproved && fileInputRef.current?.click()}
             >
               <input
                 ref={fileInputRef}
@@ -432,7 +470,7 @@ export default function Home() {
 
             <button
               onClick={handleSubmit}
-              disabled={!image || loading}
+              disabled={!image || loading || !isApproved}
               className="w-full py-3 px-6 bg-indigo-500 hover:bg-indigo-600 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
             >
               {loading ? (

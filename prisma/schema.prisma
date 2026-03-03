@@ -1,0 +1,41 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// 用户表
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  email     String?
+  role      String   @default("user")  // user / admin
+  status    String   @default("pending")  // pending / approved / rejected / disabled
+  apiLimit  Int      @default(100)  // API 调用次数限制
+  apiUsed   Int      @default(0)    // 已使用次数
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 关联
+  apiLogs   ApiLog[]
+}
+
+// API 调用日志
+model ApiLog {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint   String   // API 端点
+  method     String   // 请求方法
+  statusCode Int?    // 响应状态码
+  ip        String?  // IP 地址
+  userAgent String? // 用户代理
+  createdAt DateTime @default(now())
+}
