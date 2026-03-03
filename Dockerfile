@@ -6,6 +6,10 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 
+# Copy prisma
+COPY prisma ./prisma/
+RUN npx prisma generate
+
 # Copy source
 COPY . .
 
