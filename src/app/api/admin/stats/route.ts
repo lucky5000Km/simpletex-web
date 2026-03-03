@@ -56,9 +56,9 @@ export async function GET(request: NextRequest) {
       select: { id: true, username: true },
     });
 
-    const userMap = new Map(users.map((u) => [u.id, u.username]));
+    const userMap = new Map(users.map((u: { id: string; username: string }) => [u.id, u.username]));
 
-    const userCallStats = userStats.map((s) => ({
+    const userCallStats = userStats.map((s: { userId: string; _count: number }) => ({
       userId: s.userId,
       username: userMap.get(s.userId) || "未知",
       count: s._count,
