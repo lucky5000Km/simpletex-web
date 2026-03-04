@@ -1,16 +1,20 @@
-FROM node:20
+FROM node:20-alpine
 
 WORKDIR /app
 
-# Install dependencies
+# Copy package files
 COPY package*.json ./
-RUN npm install
 
-# Copy prisma
+# Clean install to get fresh dependencies
+RUN npm ci
+
+# Copy prisma schema
 COPY prisma ./prisma/
+
+# Generate Prisma Client  
 RUN npx prisma generate
 
-# Copy source
+# Copy source code
 COPY . .
 
 # Build
