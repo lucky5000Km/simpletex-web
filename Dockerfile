@@ -5,19 +5,20 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Clean install to get fresh dependencies
-RUN npm ci
+# Install dependencies
+RUN npm install
 
 # Copy prisma schema
 COPY prisma ./prisma/
 
-# Generate Prisma Client  
+# Generate Prisma Client
 RUN npx prisma generate
 
 # Copy source code
 COPY . .
 
-# Build
+# Clean Next.js cache and rebuild
+RUN rm -rf .next
 RUN npm run build
 
 # Expose port
