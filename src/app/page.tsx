@@ -30,8 +30,13 @@ export default function Home() {
   const [copied, setCopied] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportSuccess, setReportSuccess] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const currentImageRef = useRef<string>("");
 
   // Check login status
   useEffect(() => {
@@ -251,7 +256,51 @@ export default function Home() {
     }
   }, [latex]);
 
-  // Load from history
+  // 提交反馈
+  const handleReport = useCallback(async () => {
+    if (!image) return;
+    
+    setReportLoading(true);
+    try {
+      // 获取用户信息
+      const savedUser = localStorage.getItem("simpletex_user");
+      let authHeader = "";
+      if (savedUser) {
+        const user = JSON.parse(savedUser);
+        authHeader = Buffer.from(JSON.stringify(user)).toString("base64");
+      }
+      
+      const formData = new FormData();
+      formData.append("image", image);
+      formData.append("latexResult", latex);
+      formData.append("errorReason", reportReason || "解析不正确");
+      
+      const response = await fetch("/api/feedback", {
+        method: "POST",
+        headers: authHeader ? { "Authorization": authHeader } : {},
+        body: formData,
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        setReportSuccess(true);
+        setTimeout(() => {
+          setShowReportModal(false);
+          setReportSuccess(false);
+          setReportReason("");
+        }, 2000);
+      } else {
+        alert(data.message || "提交失败，请重试");
+      }
+    } catch (err) {
+      console.error("Report error:", err);
+      alert("提交失败，请重试");
+    } finally {
+      setReportLoading(false);
+    }
+  }, [image, latex, reportReason]);
+
+  // 加载历史记录
   const handleLoadHistory = useCallback((item: HistoryItem) => {
     setImagePreview(item.imagePreview);
     setLatex(item.latex);
@@ -558,6 +607,22 @@ export default function Home() {
                       <p className="text-xs text-slate-400 mt-1">
                         编辑后预览区将实时更新
                       </p>
+                      
+                      {/* 上报按钮 */}
+                      {latex && (
+                        <div className="mt-4 pt-4 border-t border-slate-200">
+                          <button
+                            type="button"
+                            onClick={() => setShowReportModal(true)}
+                            className="w-full py-2 px-4 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            解析不正确，我要上报
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : (
@@ -651,6 +716,83 @@ export default function Home() {
                 </div>
               )}
             </div>
+          </div>
+        </>
+      )}
+
+      {/* 上报弹窗 */}
+      {showReportModal && (
+        <>
+          <div className="fixed inset-0 bg-black/50 z-50" onClick={() => setShowReportModal(false)} />
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-xl shadow-2xl z-50 p-6">
+            {reportSuccess ? (
+              <div className="text-center py-8">
+                <div className="w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
+                  <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <p className="text-lg font-medium text-green-600">感谢您的反馈！</p>
+                <p className="text-sm text-slate-500 mt-2">我们会尽快处理您的问题</p>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-slate-800">上报解析问题</h3>
+                  <button
+                    type="button"
+                    onClick={() => setShowReportModal(false)}
+                    className="text-slate-400 hover:text-slate-600"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      上传的图片
+                    </label>
+                    {imagePreview && (
+                      <img src={imagePreview} alt="上传的图片" className="max-h-40 rounded-lg mx-auto" />
+                    )}
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      错误原因（可选）
+                    </label>
+                    <textarea
+                      value={reportReason}
+                      onChange={(e) => setReportReason(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      rows={3}
+                      placeholder="请描述解析不正确的地方..."
+                    />
+                  </div>
+                  
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowReportModal(false)}
+                      className="flex-1 py-2 px-4 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors"
+                    >
+                      取消
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleReport}
+                      disabled={reportLoading}
+                      className="flex-1 py-2 px-4 bg-red-500 hover:bg-red-600 disabled:bg-red-300 text-white rounded-lg transition-colors"
+                    >
+                      {reportLoading ? "提交中..." : "提交反馈"}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </>
       )}

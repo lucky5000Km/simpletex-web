@@ -39,3 +39,16 @@ model ApiLog {
   userAgent String? // 用户代理
   createdAt DateTime @default(now())
 }
+
+// 解析失败上报记录
+model ParsingFeedback {
+  id           String   @id @default(cuid())
+  userId       String?  // 上报用户（可选，游客也可以上报）
+  imageUrl     String   // 用户上传的图片存储路径
+  latexResult  String?  // 解析结果
+  errorReason  String?  // 用户选择的错误原因或描述
+  status       String   @default("pending") // pending / reviewed / resolved
+  adminNote    String?  // 管理员备注
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

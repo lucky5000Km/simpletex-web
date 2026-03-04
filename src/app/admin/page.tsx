@@ -32,7 +32,7 @@ export default function Admin() {
   const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "users">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "users" | "feedback">("dashboard");
   const [period, setPeriod] = useState<"7d" | "30d" | "all">("7d");
   
   // 添加用户表单
@@ -42,7 +42,11 @@ export default function Admin() {
   // 编辑用户用量限制
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [editApiLimit, setEditApiLimit] = useState("");
-
+  
+  // 反馈管理
+  const [feedbacks, setFeedbacks] = useState<any[]>([]);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  
   // 检查登录状态
   useEffect(() => {
     const savedUser = localStorage.getItem("simpletex_admin");
@@ -103,6 +107,9 @@ export default function Admin() {
   useEffect(() => {
     if (isLoggedIn && activeTab === "users") {
       fetchUsers();
+    }
+    if (isLoggedIn && activeTab === "feedback") {
+      fetchFeedbacks();
     }
   }, [isLoggedIn, activeTab, fetchUsers]);
 
@@ -218,6 +225,58 @@ export default function Admin() {
       }
     } catch (err) {
       alert("重置失败");
+    }
+  };
+
+  // 获取反馈列表
+  const fetchFeedbacks = async () => {
+    setFeedbackLoading(true);
+    try {
+      const savedUser = localStorage.getItem("simpletex_admin");
+      if (!savedUser) return;
+      
+      const user = JSON.parse(savedUser);
+      const authHeader = Buffer.from(JSON.stringify(user)).toString("base64");
+      
+      const response = await fetch("/api/admin/feedback", {
+        headers: { "Authorization": authHeader },
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        setFeedbacks(data.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch feedbacks", err);
+    } finally {
+      setFeedbackLoading(false);
+    }
+  };
+
+  // 更新反馈状态
+  const handleFeedbackStatus = async (id: string, status: string, adminNote: string = "") => {
+    try {
+      const savedUser = localStorage.getItem("simpletex_admin");
+      if (!savedUser) return;
+      
+      const user = JSON.parse(savedUser);
+      const authHeader = Buffer.from(JSON.stringify(user)).toString("base64");
+      
+      const response = await fetch("/api/admin/feedback", {
+        method: "PATCH",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": authHeader,
+        },
+        body: JSON.stringify({ id, status, adminNote }),
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        fetchFeedbacks();
+      }
+    } catch (err) {
+      console.error("Failed to update feedback", err);
     }
   };
 
@@ -395,6 +454,16 @@ export default function Admin() {
               }`}
             >
               用户管理
+            </button>
+            <button
+              onClick={() => setActiveTab("feedback")}
+              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === "feedback"
+                  ? "border-indigo-500 text-indigo-600"
+                  : "border-transparent text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              反馈管理
             </button>
           </div>
         </div>
@@ -761,6 +830,102 @@ export default function Admin() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* 反馈管理 */}
+        {activeTab === "feedback" && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-200">
+                <h2 className="text-lg font-semibold text-slate-800">解析问题反馈列表</h2>
+              </div>
+              
+              {feedbackLoading ? (
+                <div className="p-8 text-center text-slate-400">加载中...</div>
+              ) : feedbacks.length === 0 ? (
+                <div className="p-8 text-center text-slate-400">暂无反馈记录</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-slate-50 border-b border-slate-200">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">图片</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">解析结果</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">错误原因</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">状态</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">提交时间</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">操作</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {feedbacks.map((feedback) => (
+                        <tr key={feedback.id} className="hover:bg-slate-50">
+                          <td className="px-4 py-3">
+                            {feedback.imageUrl && (
+                              <a href={`/api/feedback-image?file=${feedback.imageUrl}`} target="_blank" rel="noopener noreferrer">
+                                <img src={`/api/feedback-image?file=${feedback.imageUrl}`} alt="反馈图片" className="w-16 h-16 object-cover rounded" />
+                              </a>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 max-w-xs">
+                            <p className="text-sm text-slate-600 truncate font-mono">
+                              {feedback.latexResult || "-"}
+                            </p>
+                          </td>
+                          <td className="px-4 py-3">
+                            <p className="text-sm text-slate-600">
+                              {feedback.errorReason || "解析不正确"}
+                            </p>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              feedback.status === "pending" ? "bg-yellow-100 text-yellow-700" :
+                              feedback.status === "reviewed" ? "bg-blue-100 text-blue-700" :
+                              "bg-green-100 text-green-700"
+                            }`}>
+                              {feedback.status === "pending" ? "待处理" :
+                               feedback.status === "reviewed" ? "已处理" : "已解决"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-slate-500">
+                            {new Date(feedback.createdAt).toLocaleString("zh-CN")}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex gap-2">
+                              {feedback.status === "pending" && (
+                                <>
+                                  <button
+                                    onClick={() => handleFeedbackStatus(feedback.id, "reviewed")}
+                                    className="px-3 py-1 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded"
+                                  >
+                                    标记已处理
+                                  </button>
+                                  <button
+                                    onClick={() => handleFeedbackStatus(feedback.id, "resolved")}
+                                    className="px-3 py-1 text-sm bg-green-500 hover:bg-green-600 text-white rounded"
+                                  >
+                                    已解决
+                                  </button>
+                                </>
+                              )}
+                              {feedback.status === "reviewed" && (
+                                <button
+                                  onClick={() => handleFeedbackStatus(feedback.id, "resolved")}
+                                  className="px-3 py-1 text-sm bg-green-500 hover:bg-green-600 text-white rounded"
+                                >
+                                  标记已解决
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         )}

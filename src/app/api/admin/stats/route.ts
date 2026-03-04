@@ -18,17 +18,17 @@ export async function GET(request: NextRequest) {
     }
 
     // 总调用次数
-    const totalCalls = await prisma.apiLog.count();
+    const totalCalls = Number(await prisma.apiLog.count());
 
     // 期间的调用次数
-    const periodCalls = await prisma.apiLog.count({
+    const periodCalls = Number(await prisma.apiLog.count({
       where: {
         createdAt: { gte: startDate },
       },
-    });
+    }));
 
-    // 每日调用统计
-    const dailyStats = await prisma.$queryRaw`
+    // 每日调用统计 - 转换 BigInt 为 Number
+    const dailyStatsRaw = await prisma.$queryRaw`
       SELECT date(createdAt) as date, COUNT(*) as count 
       FROM ApiLog 
       WHERE createdAt >= ${startDate}
@@ -36,6 +36,12 @@ export async function GET(request: NextRequest) {
       ORDER BY date DESC
       LIMIT 30
     `;
+
+    // 转换 BigInt 为普通数字
+    const dailyStats = (dailyStatsRaw as any[]).map((row: { date: string; count: bigint }) => ({
+      date: row.date,
+      count: Number(row.count),
+    }));
 
     // 每个用户的调用统计
     const userStats = await prisma.apiLog.groupBy({
@@ -61,13 +67,13 @@ export async function GET(request: NextRequest) {
     const userCallStats = userStats.map((s: { userId: string; _count: number }) => ({
       userId: s.userId,
       username: userMap.get(s.userId) || "未知",
-      count: s._count,
+      count: Number(s._count),
     }));
 
     // 成功/失败统计
-    const successCount = await prisma.apiLog.count({
+    const successCount = Number(await prisma.apiLog.count({
       where: { statusCode: { gte: 200, lt: 400 } },
-    });
+    }));
 
     const failCount = totalCalls - successCount;
 
@@ -78,7 +84,7 @@ export async function GET(request: NextRequest) {
         periodCalls,
         successCalls: successCount,
         failCalls: failCount,
-        dailyStats: dailyStats || [],
+        dailyStats,
         userCallStats,
       },
     });
